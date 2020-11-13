@@ -8,7 +8,12 @@ The Project
 
 The goals / steps of this project are the following:
 
-* Todo
+* Implement a so called waypoint_updater ROS node that takes waypoints from a map, ahead lying traffic lights and speed limits to determine the path the vehicle shall follow
+* Implement a so called dbw (drive by wire) ROS node that uses a combination of controllers to follow the ahead lying waypoints through steering, accelerating and decelerating
+* Implement a traffic light detection
+** First the position of the next traffic light has to be determined using map information and the current vehicles position
+** Afterwards a traffic light classifier has to be trained and used to determine the state of the traffic light
+
 
 ### Note to reviewers
 The project was not arranged as group project, but by me as an individual. You can contact me as follows:
