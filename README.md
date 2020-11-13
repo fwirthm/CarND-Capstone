@@ -11,7 +11,11 @@ The goals / steps of this project are the following:
 * Todo
 
 ### Note to reviewers
-The project was not arranged as group project, but by me as an individual.
+The project was not arranged as group project, but by me as an individual. You can contact me as follows:
+
+mail: flwirth@googlemail.com
+LinkedIn: https://www.linkedin.com/in/fwirthmueller/
+
 
 
 
