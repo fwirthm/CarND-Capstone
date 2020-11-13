@@ -11,6 +11,9 @@ import tf
 import cv2
 import yaml
 from scipy.spatial import KDTree
+from datetime import datetime
+import os
+import csv
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -25,6 +28,8 @@ class TLDetector(object):
         self.waypoints_2d = None
         self.waypoint_tree = None
         self.image_counter = 0
+	self.collect = False
+	self.stoptime = None
 
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -114,7 +119,7 @@ class TLDetector(object):
         
         return(closest_waypoint_idx)
 
-    def get_light_state(self, light):
+    def get_light_state(self, light, distance):
         """Determines the current color of the traffic light
 
         Args:
@@ -124,16 +129,59 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        #if(not self.has_image):
-        #    self.prev_light_loc = None
-        #    return False
-
-        #cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        if(not self.has_image):
+            self.prev_light_loc = None
+            return False
+        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         #Get classification
-        #return self.light_classifier.get_classification(cv_image)
-        #todo
-        return(light.state)
+	state = self.light_classifier.get_classification(cv_image)
+
+	if self.stoptime:
+		now = datetime.now()		
+		if state != 0:
+			self.stoptime = None
+		elif (now - self.stoptime).total_seconds > 10:
+			state = 4
+		else:
+			pass
+	elif state ==2:
+		self.stoptime = datetime.now()
+			
+
+	#rospy warn & notification	
+	if state!=light.state and distance<120:
+		rospy.logwarn("close traffic light ("+str(distance)+"m) state not recognised correctly")
+		rospy.logwarn("actual state: "+str(light.state)+"; estimated state: "+str(state))
+		if light.state == 0:
+			rospy.logerr("missed red light!")
+		
+		if self.collect:
+			now = datetime.now()		
+			name = now.strftime("%Y_%m_%d_%H_%M_%S_%f")
+			path = "/home/student/Desktop/CarND-Capstone-master/imgs/traffic_lights/"
+			cv2.imwrite(path+"imgs/"+name+".jpg", cv_image)
+			fieldnames = ["image_name", "label"]
+			if os.path.isfile(path+"labels.csv"):
+					
+				with open(path+"labels.csv", "a") as f:
+					writer=csv.DictWriter(f,fieldnames=fieldnames)				
+					writer.writerow({"image_name":name,\
+					"label":str(light.state)})
+				
+			else:
+				with open(path+"labels.csv", "w") as f:
+					writer=csv.DictWriter(f, fieldnames=fieldnames)
+					writer.writeheader()				
+					writer.writerow({"image_name":name,\
+					"label":str(light.state)})		
+
+
+
+        return(state)
+	#next line is for generating labeled training images
+	#return self.light_classifier.get_classification(cv_image, light.state)
+	
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -169,7 +217,7 @@ class TLDetector(object):
 
         if light:
             #estimate the state of the closest traffic light
-            state = self.get_light_state(light)
+            state = self.get_light_state(light, dist)
             return light_wp, state
         self.waypoints = None
         return -1, TrafficLight.UNKNOWN
